@@ -29,8 +29,40 @@
         .top-bar { width: 100%; background: #1a233a; color: white; padding: 12px; display: flex; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
         .q-card { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 10px; margin-top: 20px; border-top: 5px solid var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         #q-text { font-size: 18px; margin: 15px 0; color: #333; line-height: 1.8; word-break: break-word; }
+
+        /* အသစ်ထည့်သွင်းထားသော Audio Button Style */
         .audio-btn { background: #ffc107; border: none; padding: 12px 20px; border-radius: 25px; margin: 10px 0; cursor: pointer; font-weight: bold; width: 100%; }
         .audio-btn:disabled { background: #ccc; cursor: not-allowed; color: #666; }
+        
+        .custom-audio-style {
+            display: flex !important;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 5px 15px !important;
+            gap: 15px;
+            background: #e3b04b !important;
+            border: none;
+            border-radius: 8px !important;
+            color: #333 !important;
+            text-align: left;
+        }
+        .audio-icon-box {
+            background: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        .headset-icon { font-size: 20px; line-height: 1; }
+        .play-arrow { font-size: 10px; color: #003399; margin-top: -2px; }
+        .btn-text { font-weight: bold; font-size: 16px; letter-spacing: 1px; }
+        .small-audio { transform: scale(0.9); margin: 0 !important; width: auto !important; }
+
         .option { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 600px; box-sizing: border-box; }
         .option.active { border: 2px solid var(--primary); background: #e1f5fe; }
         .opt-num { width: 30px; height: 30px; border: 1px solid #333; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; color: #333; }
@@ -140,9 +172,7 @@
     let questions = [], current = 0, answers = [], audioLogs = {}, timeLeft = 50 * 60;
     let cbList = [1, 2, 3, 4, 5], cbIdx = 0, cbAnswers = [];
     let globalPhone = "";
-
-    // Colour Blind အဖြေမှန်များ (ပလိပ်ပြားနံပါတ်အလိုက်)
-    const cbKey = { 1: "35", 2: "8", 3: "16", 4: "2", 5: "57" };
+    const cbKey = { 1: "12", 2: "8", 3: "6", 4: "29", 5: "5" };
 
     function getDeviceId() {
         let id = localStorage.getItem('ubt_device_id');
@@ -209,15 +239,23 @@
         document.getElementById('q-category').innerText = q.audio ? "[듣기 - Listening]" : "[읽기 - Reading]";
         document.getElementById('q-text').innerHTML = q.text || "";
         const aBox = document.getElementById('q-audio-box');
+        
         if (q.audio) {
             let qAudioId = btoa(q.audio).substring(0, 15);
             let count = audioLogs[qAudioId] || 0;
-            aBox.innerHTML = `<button class="audio-btn" onclick="playAudio('${q.audio}', '${qAudioId}')" ${count >= 2 ? 'disabled' : ''}>
-                🎧 ${count >= 2 ? 'LIMIT REACHED' : 'LISTEN (' + count + '/2)'}
-            </button>`;
+            aBox.innerHTML = `
+                <button class="audio-btn custom-audio-style" onclick="playAudio('${q.audio}', '${qAudioId}')" ${count >= 2 ? 'disabled' : ''}>
+                    <div class="audio-icon-box">
+                        <span class="headset-icon">🎧</span>
+                        <span class="play-arrow">▶</span>
+                    </div>
+                    <span class="btn-text">LISTEN (${count}/2)</span>
+                </button>`;
         } else { aBox.innerHTML = ""; }
+
         const img = document.getElementById('q-img');
         if(q.img) { img.src = q.img; img.style.display = "block"; } else { img.style.display = "none"; }
+        
         const optDiv = document.getElementById('options-container');
         optDiv.innerHTML = "";
         q.shuffledOptions.forEach((opt, i) => {
@@ -226,17 +264,26 @@
             else if (opt.toString().match(/\.mp3$/i)) {
                 let optId = btoa(opt).substring(0, 15);
                 let count = audioLogs[optId] || 0;
-                content = `<button class="audio-btn" style="margin:0; width:auto; font-size:12px; padding:8px 15px;" onclick="event.stopPropagation(); playAudio('${opt}', '${optId}')" ${count >= 2 ? 'disabled' : ''}>🎧 ${count >= 2 ? 'LIMIT' : 'Audio (' + count + '/2)'}</button>`;
+                content = `
+                    <button class="audio-btn custom-audio-style small-audio" onclick="event.stopPropagation(); playAudio('${opt}', '${optId}')" ${count >= 2 ? 'disabled' : ''}>
+                        <div class="audio-icon-box">
+                            <span class="headset-icon">🎧</span>
+                            <span class="play-arrow">▶</span>
+                        </div>
+                        <span class="btn-text" style="font-size:12px;">LISTEN (${count}/2)</span>
+                    </button>`;
             } else { content = `<span>${opt}</span>`; }
             optDiv.innerHTML += `<div class="option ${answers[current]===i?'active':''}" onclick="setAns(${i})"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
         });
         updatePalette();
     }
+
     function playAudio(url, id) { if (!audioLogs[id]) audioLogs[id] = 0; if (audioLogs[id] < 2) { new Audio(url).play(); audioLogs[id]++; renderQ(); } }
     function setAns(i) { answers[current] = i; renderQ(); }
     function nextQ() { if(current < questions.length-1) { current++; renderQ(); } }
     function prevQ() { if(current > 0) { current--; renderQ(); } }
     function toggleMenu() { document.getElementById('side-menu').classList.toggle('open'); }
+    
     function updatePalette() {
         const grid = document.getElementById('exam-grid');
         grid.innerHTML = "";
@@ -248,22 +295,15 @@
             grid.appendChild(btn);
         });
     }
+
     function startTimer() { const timerObj = setInterval(() => { if(timeLeft <= 0) { clearInterval(timerObj); finishPartOne(); } timeLeft--; let m = Math.floor(timeLeft/60), s = timeLeft%60; document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`; }, 1000); }
     function finishPartOne() { document.getElementById('exam-page').classList.remove('active-page'); document.getElementById('cb-page').classList.add('active-page'); loadCB(); }
+    function loadCB() { document.getElementById('cb-q-no').innerText = `Plate ${cbIdx + 1} of 5`; document.getElementById('cb-display-img').src = `cb${cbList[cbIdx]}.jpg`; document.getElementById('cb-input').value = ""; }
     
-    function loadCB() { 
-        document.getElementById('cb-q-no').innerText = `Plate ${cbIdx + 1} of 5`; 
-        document.getElementById('cb-display-img').src = `cb${cbList[cbIdx]}.jpg`; 
-        document.getElementById('cb-input').value = ""; 
-    }
-
     function nextCB() {
         const val = document.getElementById('cb-input').value;
         cbAnswers.push({ plate: cbList[cbIdx], userAns: val });
-        if(cbIdx < 4) {
-            cbIdx++;
-            loadCB();
-        } else { processResults(); }
+        if(cbIdx < 4) { cbIdx++; loadCB(); } else { processResults(); }
     }
 
     async function processResults() {
@@ -273,8 +313,6 @@
             if(isCorrect) score += 2.5;
             reviewHTML += `<div class="review-line">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
         });
-
-        // Colour Blind Review Logic ပေါင်းထည့်ခြင်း
         reviewHTML += "<h3>Colour Blind Test Review</h3>";
         let cbCorrectCount = 0;
         cbAnswers.forEach((ans, i) => {
@@ -282,52 +320,32 @@
             if(isCBCorrect) cbCorrectCount++;
             reviewHTML += `<div class="review-line">Plate ${i+1}: <span class="${isCBCorrect?'correct-ans':'wrong-ans'}">${isCBCorrect?'✓ Pass':'✗ Fail'}</span> (Correct: ${cbKey[ans.plate]})</div>`;
         });
-
         document.getElementById('cb-page').classList.remove('active-page');
         document.getElementById('result-page').classList.add('active-page');
         const badge = document.getElementById('status-badge');
         document.getElementById('final-score').innerText = `Score: ${score}`;
         document.getElementById('final-stats').innerText = `UBT: ${score/2.5}/${questions.length} | CB: ${cbCorrectCount}/5`;
         document.getElementById('review-list').innerHTML = reviewHTML;
-
-        // Colour Blind ၅ ခုလုံးမအောင်လျှင် သို့မဟုတ် ရမှတ် ၉၅ အောက်ဆိုလျှင် FAIL ပြမည်
-        if(score >= 95 && cbCorrectCount === 5) { 
-            badge.innerText = "PASS"; badge.style.color = "var(--success)"; 
-        } else { 
-            badge.innerText = "FAIL"; badge.style.color = "var(--danger)"; 
-            if(cbCorrectCount < 5) alert("သတိပေးချက်: Colour Blind Test မအောင်မြင်ပါ။");
-        }
-        
-        const data = { 
-            name: document.getElementById('display-name').innerText, 
-            phone: globalPhone,
-            sector: document.getElementById('user-job').value, 
-            score: score,
-            cbScore: `${cbCorrectCount}/5`
-        };
+        if(score >= 95 && cbCorrectCount === 5) { badge.innerText = "PASS"; badge.style.color = "var(--success)"; }
+        else { badge.innerText = "FAIL"; badge.style.color = "var(--danger)"; }
+        const data = { name: document.getElementById('display-name').innerText, phone: globalPhone, sector: document.getElementById('user-job').value, score: score, cbScore: `${cbCorrectCount}/5` };
         fetch(apiURL, { method: "POST", body: JSON.stringify(data) });
     }
 
     async function viewResults() {
-    const name = prompt("အမည်ရိုက်ပါ:");
-    if(name) {
-        try {
-            const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
-            const data = await res.json();
-            if(data.length > 0) {
-                // data[last_row][3] က Manufacturing ဖြစ်နေရင် data[last_row][4] ကို ပြောင်းကြည့်ပါ
-                const lastEntry = data[data.length - 1];
-                const finalScore = lastEntry[4]; // Score က column D မှာဆိုရင် 3၊ column E မှာဆိုရင် 4 ပြောင်းပေးပါ
-                alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${finalScore} ဖြစ်ပါသည်။`);
-            } else {
-                alert("ဒီအမည်နဲ့ ဖြေဆိုထားတဲ့ မှတ်တမ်းမရှိသေးပါဘူး။");
-            }
-        } catch(e) {
-            alert("အချက်အလက် ရှာဖွေရာတွင် အမှားအယွင်းရှိနေပါသည်။");
+        const name = prompt("အမည်ရိုက်ပါ:");
+        if(name) {
+            try {
+                const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    const lastEntry = data[data.length - 1];
+                    const finalScore = lastEntry[4]; // Column E (Score) အတွက် index 4 ဟု ပြင်ထားပါသည်
+                    alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${finalScore} ဖြစ်ပါသည်။`);
+                } else { alert("မတွေ့ပါ။"); }
+            } catch(e) { alert("Error!"); }
         }
     }
-}
-
 </script>
 </body>
 </html>
