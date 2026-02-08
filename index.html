@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>2026 UBT & Colour Blind Test</title>
     <style>
-        /* CSS များ အားလုံး မူလအတိုင်း ထားရှိသည် */
         :root { --primary: #00b4db; --dark: #12192c; --white: #ffffff; --danger: #ff0055; --success: #2ecc71; --gold: #d4af37; --telegram: #0088cc; }
         body { font-family: sans-serif; margin: 0; background: #f0f2f5; color: #333; overflow-x: hidden; }
         .page { display: none; min-height: 100vh; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; }
@@ -34,7 +33,6 @@
         .option { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 600px; box-sizing: border-box; }
         .option.active { border: 2px solid var(--primary); background: #e1f5fe; }
         
-        /* [ပြင်ဆင်ချက်] Review mode အတွက် အရောင်များ */
         .opt-correct-review { background-color: #d4edda !important; border: 2px solid #28a745 !important; color: #155724 !important; }
         .opt-wrong-review { background-color: #f8d7da !important; border: 2px solid #dc3545 !important; color: #721c24 !important; }
         
@@ -54,6 +52,9 @@
         .num-btn.current { background: var(--primary); color: white; border: 2px solid #008ba3; }
         #cb-page { background: var(--dark); }
         .cb-img { width: 250px; height: 250px; border-radius: 50%; border: 5px solid white; margin: 20px 0; display: block; margin-left: auto; margin-right: auto; }
+        
+        /* Exit Review Button */
+        #exit-review-btn { display: none; position: fixed; left: 20px; bottom: 25px; background: var(--danger); color: white; padding: 15px 20px; cursor: pointer; border-radius: 50px; z-index: 1001; font-size: 14px; font-weight: bold; border: 2px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -106,11 +107,12 @@
         <button class="btn" style="background:#2c3e50;" onclick="prevQ()">PREV</button>
         <button class="btn" style="background:#2c3e50;" onclick="nextQ()">NEXT</button>
     </div>
-    <div class="palette-toggle" onclick="toggleMenu()">QUESTIONS ☰</div>
+    <div class="palette-toggle" id="palette-btn" onclick="toggleMenu()">QUESTIONS ☰</div>
+    <div id="exit-review-btn" onclick="exitReview()">EXIT REVIEW ✖</div>
     <div id="side-menu" class="side-menu">
         <h3 style="margin-top:0; font-size:18px;">Exam Questions</h3>
         <div id="exam-grid" class="grid"></div>
-        <button class="btn" style="width:100%; background:var(--danger);" onclick="finishPartOne()">FINISH EXAM</button>
+        <button id="finish-btn" class="btn" style="width:100%; background:var(--danger);" onclick="finishPartOne()">FINISH EXAM</button>
         <button class="btn" style="width:100%; background:#2c3e50; margin-top:10px;" onclick="toggleMenu()">CLOSE</button>
     </div>
 </div>
@@ -130,6 +132,9 @@
         <div id="status-badge" class="status-badge"></div>
         <h2 id="final-score" style="margin: 0;">Score: 0</h2>
         <p id="final-stats"></p>
+        
+        <button class="btn" style="background:var(--primary); width: 100%; margin-bottom: 10px;" onclick="enterReview()">REVIEW ANSWERS</button>
+
         <div class="review-scroll" id="review-list"></div>
         <div class="contact-group" style="width: 100%;">
             <p style="margin: 5px 0; font-size: 13px; color: #333; font-weight: bold;">[ အသေးစိတ်စုံစမ်းရန်/သင်တန်းအပ်ရန် ]</p>
@@ -145,6 +150,7 @@
     let questions = [], current = 0, answers = [], audioLogs = {}, timeLeft = 50 * 60;
     let cbList = [1, 2, 3, 4, 5], cbIdx = 0, cbAnswers = [];
     let globalPhone = "";
+    let isReviewing = false;
 
     const cbKey = { 1: "35", 2: "8", 3: "16", 4: "2", 5: "57" };
 
@@ -226,10 +232,6 @@
         const optDiv = document.getElementById('options-container');
         optDiv.innerHTML = "";
 
-        // Review mode စစ်ဆေးခြင်း (Result page ရောက်နေလျှင်)
-        const isReviewMode = document.getElementById('result-page').classList.contains('active-page') || 
-                            (!document.getElementById('exam-page').classList.contains('active-page') && answers.some(a => a !== null));
-
         q.shuffledOptions.forEach((opt, i) => {
             let content = "";
             if (opt.toString().match(/\.(jpg|jpeg|png)$/i)) { content = `<img src="${opt}" style="height:70px; border-radius:5px;">`; }
@@ -239,17 +241,16 @@
                 content = `<button class="audio-btn" style="margin:0; width:auto; font-size:12px; padding:8px 15px;" onclick="event.stopPropagation(); playAudio('${opt}', '${optId}')" ${count >= 2 ? 'disabled' : ''}>🎧 ${count >= 2 ? 'LIMIT' : 'Audio (' + count + '/2)'}</button>`;
             } else { content = `<span>${opt}</span>`; }
 
-            // [ပြင်ဆင်ချက်] Review Mode အရောင် Logic
             let reviewClass = "";
-            if (isReviewMode) {
+            if (isReviewing) {
                 if (i === q.newAnsIndex) {
-                    reviewClass = "opt-correct-review"; // အဖြေမှန်ကို အမြဲ အစိမ်းပြ
+                    reviewClass = "opt-correct-review"; 
                 } else if (answers[current] === i && i !== q.newAnsIndex) {
-                    reviewClass = "opt-wrong-review"; // ကိုယ်ဖြေတာ မှားရင် အနီပြ
+                    reviewClass = "opt-wrong-review";
                 }
             }
 
-            optDiv.innerHTML += `<div class="option ${answers[current]===i && !isReviewMode ?'active':''} ${reviewClass}" onclick="${isReviewMode ? '' : `setAns(${i})`}"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
+            optDiv.innerHTML += `<div class="option ${answers[current]===i && !isReviewing ?'active':''} ${reviewClass}" onclick="${isReviewing ? '' : `setAns(${i})`}"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
         });
         updatePalette();
     }
@@ -272,7 +273,7 @@
         });
     }
     
-    function startTimer() { const timerObj = setInterval(() => { if(timeLeft <= 0) { clearInterval(timerObj); finishPartOne(); } timeLeft--; let m = Math.floor(timeLeft/60), s = timeLeft%60; document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`; }, 1000); }
+    function startTimer() { const timerObj = setInterval(() => { if(timeLeft <= 0 || isReviewing) { clearInterval(timerObj); if(!isReviewing) finishPartOne(); } timeLeft--; let m = Math.floor(timeLeft/60), s = timeLeft%60; document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`; }, 1000); }
     function finishPartOne() { document.getElementById('exam-page').classList.remove('active-page'); document.getElementById('cb-page').classList.add('active-page'); loadCB(); }
     
     function loadCB() { 
@@ -295,7 +296,7 @@
         questions.forEach((q, i) => {
             const isCorrect = answers[i] === q.newAnsIndex;
             if(isCorrect) score += 2.5;
-            reviewHTML += `<div class="review-line" style="cursor:pointer;" onclick="document.getElementById('exam-page').classList.add('active-page'); document.getElementById('result-page').classList.remove('active-page'); current=${i}; renderQ();">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
+            reviewHTML += `<div class="review-line" style="cursor:pointer;" onclick="jumpToQ(${i})">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
         });
 
         reviewHTML += "<h3>Colour Blind Test Review</h3>";
@@ -321,6 +322,31 @@
         
         const data = { name: document.getElementById('display-name').innerText, phone: globalPhone, sector: document.getElementById('user-job').value, score: score, cbScore: `${cbCorrectCount}/5` };
         fetch(apiURL, { method: "POST", body: JSON.stringify(data) });
+    }
+
+    function enterReview() {
+        isReviewing = true;
+        document.getElementById('result-page').classList.remove('active-page');
+        document.getElementById('exam-page').classList.add('active-page');
+        document.getElementById('exit-review-btn').style.display = "block";
+        document.getElementById('finish-btn').style.display = "none";
+        document.getElementById('timer').innerText = "REVIEW MODE";
+        current = 0;
+        renderQ();
+    }
+
+    function exitReview() {
+        isReviewing = false;
+        document.getElementById('exam-page').classList.remove('active-page');
+        document.getElementById('result-page').classList.add('active-page');
+        document.getElementById('exit-review-btn').style.display = "none";
+        document.getElementById('finish-btn').style.display = "block";
+    }
+
+    function jumpToQ(index) {
+        enterReview();
+        current = index;
+        renderQ();
     }
 
     async function viewResults() {
