@@ -33,6 +33,11 @@
         .audio-btn:disabled { background: #ccc; cursor: not-allowed; color: #666; }
         .option { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 600px; box-sizing: border-box; }
         .option.active { border: 2px solid var(--primary); background: #e1f5fe; }
+        
+        /* [ပြင်ဆင်ချက်] Review mode အတွက် အရောင်များ */
+        .opt-correct-review { background-color: #d4edda !important; border: 2px solid #28a745 !important; color: #155724 !important; }
+        .opt-wrong-review { background-color: #f8d7da !important; border: 2px solid #dc3545 !important; color: #721c24 !important; }
+        
         .opt-num { width: 30px; height: 30px; border: 1px solid #333; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; color: #333; }
         .result-container { background: white; border-radius: 15px; padding: 25px; width: 100%; max-width: 500px; text-align: center; color: #333; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         .status-badge { font-size: 48px; font-weight: bold; margin-bottom: 10px; }
@@ -141,7 +146,6 @@
     let cbList = [1, 2, 3, 4, 5], cbIdx = 0, cbAnswers = [];
     let globalPhone = "";
 
-    // Colour Blind အဖြေမှန်များ (ပလိပ်ပြားနံပါတ်အလိုက်)
     const cbKey = { 1: "35", 2: "8", 3: "16", 4: "2", 5: "57" };
 
     function getDeviceId() {
@@ -218,8 +222,14 @@
         } else { aBox.innerHTML = ""; }
         const img = document.getElementById('q-img');
         if(q.img) { img.src = q.img; img.style.display = "block"; } else { img.style.display = "none"; }
+        
         const optDiv = document.getElementById('options-container');
         optDiv.innerHTML = "";
+
+        // Review mode စစ်ဆေးခြင်း (Result page ရောက်နေလျှင်)
+        const isReviewMode = document.getElementById('result-page').classList.contains('active-page') || 
+                            (!document.getElementById('exam-page').classList.contains('active-page') && answers.some(a => a !== null));
+
         q.shuffledOptions.forEach((opt, i) => {
             let content = "";
             if (opt.toString().match(/\.(jpg|jpeg|png)$/i)) { content = `<img src="${opt}" style="height:70px; border-radius:5px;">`; }
@@ -228,15 +238,28 @@
                 let count = audioLogs[optId] || 0;
                 content = `<button class="audio-btn" style="margin:0; width:auto; font-size:12px; padding:8px 15px;" onclick="event.stopPropagation(); playAudio('${opt}', '${optId}')" ${count >= 2 ? 'disabled' : ''}>🎧 ${count >= 2 ? 'LIMIT' : 'Audio (' + count + '/2)'}</button>`;
             } else { content = `<span>${opt}</span>`; }
-            optDiv.innerHTML += `<div class="option ${answers[current]===i?'active':''}" onclick="setAns(${i})"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
+
+            // [ပြင်ဆင်ချက်] Review Mode အရောင် Logic
+            let reviewClass = "";
+            if (isReviewMode) {
+                if (i === q.newAnsIndex) {
+                    reviewClass = "opt-correct-review"; // အဖြေမှန်ကို အမြဲ အစိမ်းပြ
+                } else if (answers[current] === i && i !== q.newAnsIndex) {
+                    reviewClass = "opt-wrong-review"; // ကိုယ်ဖြေတာ မှားရင် အနီပြ
+                }
+            }
+
+            optDiv.innerHTML += `<div class="option ${answers[current]===i && !isReviewMode ?'active':''} ${reviewClass}" onclick="${isReviewMode ? '' : `setAns(${i})`}"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
         });
         updatePalette();
     }
+    
     function playAudio(url, id) { if (!audioLogs[id]) audioLogs[id] = 0; if (audioLogs[id] < 2) { new Audio(url).play(); audioLogs[id]++; renderQ(); } }
     function setAns(i) { answers[current] = i; renderQ(); }
     function nextQ() { if(current < questions.length-1) { current++; renderQ(); } }
     function prevQ() { if(current > 0) { current--; renderQ(); } }
     function toggleMenu() { document.getElementById('side-menu').classList.toggle('open'); }
+    
     function updatePalette() {
         const grid = document.getElementById('exam-grid');
         grid.innerHTML = "";
@@ -248,6 +271,7 @@
             grid.appendChild(btn);
         });
     }
+    
     function startTimer() { const timerObj = setInterval(() => { if(timeLeft <= 0) { clearInterval(timerObj); finishPartOne(); } timeLeft--; let m = Math.floor(timeLeft/60), s = timeLeft%60; document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`; }, 1000); }
     function finishPartOne() { document.getElementById('exam-page').classList.remove('active-page'); document.getElementById('cb-page').classList.add('active-page'); loadCB(); }
     
@@ -271,10 +295,9 @@
         questions.forEach((q, i) => {
             const isCorrect = answers[i] === q.newAnsIndex;
             if(isCorrect) score += 2.5;
-            reviewHTML += `<div class="review-line">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
+            reviewHTML += `<div class="review-line" style="cursor:pointer;" onclick="document.getElementById('exam-page').classList.add('active-page'); document.getElementById('result-page').classList.remove('active-page'); current=${i}; renderQ();">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
         });
 
-        // Colour Blind Review Logic ပေါင်းထည့်ခြင်း
         reviewHTML += "<h3>Colour Blind Test Review</h3>";
         let cbCorrectCount = 0;
         cbAnswers.forEach((ans, i) => {
@@ -290,44 +313,29 @@
         document.getElementById('final-stats').innerText = `UBT: ${score/2.5}/${questions.length} | CB: ${cbCorrectCount}/5`;
         document.getElementById('review-list').innerHTML = reviewHTML;
 
-        // Colour Blind ၅ ခုလုံးမအောင်လျှင် သို့မဟုတ် ရမှတ် ၉၅ အောက်ဆိုလျှင် FAIL ပြမည်
         if(score >= 95 && cbCorrectCount === 5) { 
             badge.innerText = "PASS"; badge.style.color = "var(--success)"; 
         } else { 
             badge.innerText = "FAIL"; badge.style.color = "var(--danger)"; 
-            if(cbCorrectCount < 5) alert("သတိပေးချက်: Colour Blind Test မအောင်မြင်ပါ။");
         }
         
-        const data = { 
-            name: document.getElementById('display-name').innerText, 
-            phone: globalPhone,
-            sector: document.getElementById('user-job').value, 
-            score: score,
-            cbScore: `${cbCorrectCount}/5`
-        };
+        const data = { name: document.getElementById('display-name').innerText, phone: globalPhone, sector: document.getElementById('user-job').value, score: score, cbScore: `${cbCorrectCount}/5` };
         fetch(apiURL, { method: "POST", body: JSON.stringify(data) });
     }
 
     async function viewResults() {
-    const name = prompt("အမည်ရိုက်ပါ:");
-    if(name) {
-        try {
-            const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
-            const data = await res.json();
-            if(data.length > 0) {
-                // data[last_row][3] က Manufacturing ဖြစ်နေရင် data[last_row][4] ကို ပြောင်းကြည့်ပါ
-                const lastEntry = data[data.length - 1];
-                const finalScore = lastEntry[4,5]; // Score က column D မှာဆိုရင် 3၊ column E မှာဆိုရင် 4 ပြောင်းပေးပါ
-                alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${finalScore} ဖြစ်ပါသည်။`);
-            } else {
-                alert("ဒီအမည်နဲ့ ဖြေဆိုထားတဲ့ မှတ်တမ်းမရှိသေးပါဘူး။");
-            }
-        } catch(e) {
-            alert("အချက်အလက် ရှာဖွေရာတွင် အမှားအယွင်းရှိနေပါသည်။");
+        const name = prompt("အမည်ရိုက်ပါ:");
+        if(name) {
+            try {
+                const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    const lastEntry = data[data.length - 1];
+                    alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${lastEntry[4]} ဖြစ်ပါသည်။`);
+                } else { alert("ဒီအမည်နဲ့ ဖြေဆိုထားတဲ့ မှတ်တမ်းမရှိသေးပါဘူး။"); }
+            } catch(e) { alert("အချက်အလက် ရှာဖွေရာတွင် အမှားအယွင်းရှိနေပါသည်။"); }
         }
     }
-}
-
 </script>
 </body>
-        </html>
+</html>
