@@ -309,14 +309,25 @@
     }
 
     async function viewResults() {
-        const name = prompt("အမည်ရိုက်ပါ:");
-        if(name) {
+    const name = prompt("အမည်ရိုက်ပါ:");
+    if(name) {
+        try {
             const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
             const data = await res.json();
-            if(data.length > 0) alert(`နောက်ဆုံးရမှတ်: ${data[data.length-1][3]}`);
-            else alert("မတွေ့ပါ။");
+            if(data.length > 0) {
+                // data[last_row][3] က Manufacturing ဖြစ်နေရင် data[last_row][4] ကို ပြောင်းကြည့်ပါ
+                const lastEntry = data[data.length - 1];
+                const finalScore = lastEntry[4,5]; // Score က column D မှာဆိုရင် 3၊ column E မှာဆိုရင် 4 ပြောင်းပေးပါ
+                alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${finalScore} ဖြစ်ပါသည်။`);
+            } else {
+                alert("ဒီအမည်နဲ့ ဖြေဆိုထားတဲ့ မှတ်တမ်းမရှိသေးပါဘူး။");
+            }
+        } catch(e) {
+            alert("အချက်အလက် ရှာဖွေရာတွင် အမှားအယွင်းရှိနေပါသည်။");
         }
     }
+}
+
 </script>
 </body>
-</html
+</html>
