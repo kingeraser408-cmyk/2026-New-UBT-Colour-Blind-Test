@@ -151,6 +151,10 @@
     let cbList = [1, 2, 3, 4, 5], cbIdx = 0, cbAnswers = [];
     let globalPhone = "";
     let isReviewing = false;
+    
+    // Colour Blind Timer Variables
+    let cbTimeLeft = 60; 
+    let cbTimerObj;
 
     const cbKey = { 1: "35", 2: "8", 3: "16", 4: "2", 5: "57" };
 
@@ -280,6 +284,25 @@
         document.getElementById('cb-q-no').innerText = `Plate ${cbIdx + 1} of 5`; 
         document.getElementById('cb-display-img').src = `cb${cbList[cbIdx]}.jpg`; 
         document.getElementById('cb-input').value = ""; 
+        
+        if (cbIdx === 0) startCBTimer();
+    }
+    
+    function startCBTimer() {
+        if (cbTimerObj) clearInterval(cbTimerObj);
+        cbTimerObj = setInterval(() => {
+            if (cbTimeLeft <= 0) {
+                clearInterval(cbTimerObj);
+                alert("Colour Blind Test အတွက် အချိန်ကုန်ဆုံးသွားပါပြီ။");
+                processResults();
+                return;
+            }
+            cbTimeLeft--;
+            let m = Math.floor(cbTimeLeft / 60);
+            let s = cbTimeLeft % 60;
+            document.getElementById('cb-q-no').innerText = `Plate ${cbIdx + 1} of 5 (Time: ${m}:${s < 10 ? '0' : ''}${s})`;
+            if (cbTimeLeft <= 10) document.getElementById('cb-q-no').style.color = "var(--danger)";
+        }, 1000);
     }
 
     function nextCB() {
@@ -288,7 +311,10 @@
         if(cbIdx < 4) {
             cbIdx++;
             loadCB();
-        } else { processResults(); }
+        } else { 
+            clearInterval(cbTimerObj);
+            processResults(); 
+        }
     }
 
     async function processResults() {
