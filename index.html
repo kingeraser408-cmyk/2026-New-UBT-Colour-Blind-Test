@@ -33,11 +33,6 @@
         .audio-btn:disabled { background: #ccc; cursor: not-allowed; color: #666; }
         .option { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 600px; box-sizing: border-box; }
         .option.active { border: 2px solid var(--primary); background: #e1f5fe; }
-        
-        /* Review mode အတွက် အရောင်များအသစ်ပေါင်းထည့်မှု */
-        .opt-correct-review { background-color: #e3f2fd !important; border: 2px solid #2196f3 !important; color: #333 !important; }
-        .opt-wrong-review { background-color: #ffebee !important; border: 2px solid #f44336 !important; color: #333 !important; }
-        
         .opt-num { width: 30px; height: 30px; border: 1px solid #333; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; color: #333; }
         .result-container { background: white; border-radius: 15px; padding: 25px; width: 100%; max-width: 500px; text-align: center; color: #333; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         .status-badge { font-size: 48px; font-weight: bold; margin-bottom: 10px; }
@@ -223,13 +218,8 @@
         } else { aBox.innerHTML = ""; }
         const img = document.getElementById('q-img');
         if(q.img) { img.src = q.img; img.style.display = "block"; } else { img.style.display = "none"; }
-        
         const optDiv = document.getElementById('options-container');
         optDiv.innerHTML = "";
-
-        // Review mode စစ်ဆေးခြင်း
-        const isReviewMode = document.getElementById('result-page').classList.contains('active-page');
-
         q.shuffledOptions.forEach((opt, i) => {
             let content = "";
             if (opt.toString().match(/\.(jpg|jpeg|png)$/i)) { content = `<img src="${opt}" style="height:70px; border-radius:5px;">`; }
@@ -238,18 +228,7 @@
                 let count = audioLogs[optId] || 0;
                 content = `<button class="audio-btn" style="margin:0; width:auto; font-size:12px; padding:8px 15px;" onclick="event.stopPropagation(); playAudio('${opt}', '${optId}')" ${count >= 2 ? 'disabled' : ''}>🎧 ${count >= 2 ? 'LIMIT' : 'Audio (' + count + '/2)'}</button>`;
             } else { content = `<span>${opt}</span>`; }
-
-            // Review Mode အရောင် Logic
-            let reviewClass = "";
-            if (isReviewMode) {
-                if (i === q.newAnsIndex) {
-                    reviewClass = "opt-correct-review"; 
-                } else if (answers[current] === i && i !== q.newAnsIndex) {
-                    reviewClass = "opt-wrong-review";
-                }
-            }
-
-            optDiv.innerHTML += `<div class="option ${answers[current]===i?'active':''} ${reviewClass}" onclick="${isReviewMode ? '' : `setAns(${i})`}"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
+            optDiv.innerHTML += `<div class="option ${answers[current]===i?'active':''}" onclick="setAns(${i})"><div class="opt-num">${i+1}</div><div>${content}</div></div>`;
         });
         updatePalette();
     }
@@ -292,8 +271,7 @@
         questions.forEach((q, i) => {
             const isCorrect = answers[i] === q.newAnsIndex;
             if(isCorrect) score += 2.5;
-            // မေးခွန်းကို နှိပ်လိုက်လျှင် ထိုနံပါတ်သို့သွားရန် ပြင်ဆင်မှု
-            reviewHTML += `<div class="review-line" style="cursor:pointer;" onclick="document.getElementById('exam-page').classList.add('active-page'); document.getElementById('result-page').classList.remove('active-page'); current=${i}; renderQ();">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
+            reviewHTML += `<div class="review-line">Q${i+1}: <span class="${isCorrect?'correct-ans':'wrong-ans'}">${isCorrect?'✓ Correct':'✗ Wrong'}</span></div>`;
         });
 
         // Colour Blind Review Logic ပေါင်းထည့်ခြင်း
@@ -337,8 +315,9 @@
             const res = await fetch(`${apiURL}?viewResult=true&name=${name}`);
             const data = await res.json();
             if(data.length > 0) {
+                // data[last_row][3] က Manufacturing ဖြစ်နေရင် data[last_row][4] ကို ပြောင်းကြည့်ပါ
                 const lastEntry = data[data.length - 1];
-                const finalScore = lastEntry[4,5]; 
+                const finalScore = lastEntry[4,5]; // Score က column D မှာဆိုရင် 3၊ column E မှာဆိုရင် 4 ပြောင်းပေးပါ
                 alert(`${name} ၏ နောက်ဆုံးရမှတ်မှာ: ${finalScore} ဖြစ်ပါသည်။`);
             } else {
                 alert("ဒီအမည်နဲ့ ဖြေဆိုထားတဲ့ မှတ်တမ်းမရှိသေးပါဘူး။");
@@ -351,4 +330,4 @@
 
 </script>
 </body>
-</html>
+        </html>
